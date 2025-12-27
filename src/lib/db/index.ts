@@ -1,19 +1,10 @@
-import { DatabaseAdapter } from '../../types';
-import { MongoAdapter } from './mongodb';
-import { PostgresAdapter } from './postgres';
-import { SupabaseAdapter } from './supabase';
-
 export function getAdapter(): DatabaseAdapter {
-  const type = process.env.DB_TYPE?.toLowerCase();
+  // Auto-detect MongoDB if URI is present
+  const type = process.env.DB_TYPE?.toLowerCase() || (process.env.MONGODB_URI ? 'mongodb' : undefined);
 
   switch (type) {
     case 'mongodb':
       return new MongoAdapter();
-    case 'postgres':
-    case 'postgresql':
-      return new PostgresAdapter();
-    case 'supabase':
-      return new SupabaseAdapter();
     default:
       console.warn(`[Config] No valid DB_TYPE set (got '${type}'). Defaulting to Memory (Dry Run).`);
       return new MemoryAdapter();

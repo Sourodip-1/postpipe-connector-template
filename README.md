@@ -42,15 +42,15 @@ Endpoint: `POST http://localhost:3000/postpipe/ingest`
 
 Use the buttons below to deploy instantly:
 
-[![Deploy with Vercel](https://vercel.com/button)](https://vercel.com/new/clone?repository-url=https://github.com/postpipe/postpipe-connector-template&project-name=postpipe-connector&repository-name=postpipe-connector&env=POSTPIPE_CONNECTOR_ID,POSTPIPE_CONNECTOR_SECRET)
+[![Deploy with Vercel](https://vercel.com/button)](https://vercel.com/new/clone?repository-url=https://github.com/Sourodip-1/postpipe-connector-template&project-name=postpipe-connector&repository-name=postpipe-connector&env=POSTPIPE_CONNECTOR_ID,POSTPIPE_CONNECTOR_SECRET)
 
-[![Deploy to Azure](https://aka.ms/deploytoazurebutton)](https://portal.azure.com/#create/Microsoft.Template/uri/https%3A%2F%2Fraw.githubusercontent.com%2Fpostpipe%2Fpostpipe-connector-template%2Fmain%2Fazuredeploy.json)
+[![Deploy to Azure](https://aka.ms/deploytoazurebutton)](https://portal.azure.com/#create/Microsoft.Template/uri/https%3A%2F%2Fraw.githubusercontent.com%2FSourodip-1%2Fpostpipe-connector-template%2Fmain%2Fazuredeploy.json)
 
 ### Manual Deployment
 
 1. **Clone & Install**
    ```bash
-   git clone https://github.com/postpipe/postpipe-connector-template
+   git clone https://github.com/Sourodip-1/postpipe-connector-template
    cd postpipe-connector-template
    npm install
    ```
