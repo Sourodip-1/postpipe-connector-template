@@ -77,54 +77,57 @@ export class MongoAdapter implements DatabaseAdapter {
   }
 
   private getTargetConfig(payload?: PostPipeIngestPayload): { uri: string, dbName: string } {
-    // 1. If no config, return defaults
-    if (!this.config) {
-      return { uri: this.defaultUri, dbName: this.defaultDbName };
-    }
+    // 1. Determine requested target from Payload (support both naming conventions)
+    const targetName = (payload as any)?.targetDatabase || payload?.targetDb;
 
-    // 2. Determine Target from Payload
-    let target = this.config?.defaultTarget || 'default';
-
-    // Dynamic: If payload has targetDb, try to find matching Env Var
-    if (payload?.targetDb) {
-      const dynamicKey = `MONGODB_URI_${payload.targetDb.toUpperCase()}`; // e.g. MONGODB_URI_SECONDARY
+    // 2. Dynamic Routing: Check Environment Variables directly
+    // This allows routing to work WITHOUT db-routes.json if Env Vars are set.
+    if (targetName) {
+      const dynamicKey = `MONGODB_URI_${targetName.toUpperCase()}`; // e.g. MONGODB_URI_SECONDARY
       const dynamicUri = process.env[dynamicKey];
 
-      console.log(`[MongoAdapter] Debug: targetDb="${payload.targetDb}", looking for env var "${dynamicKey}"`);
+      console.log(`[MongoAdapter] Debug: target="${targetName}", looking for env var "${dynamicKey}"`);
 
       if (dynamicUri) {
-        console.log(`[MongoAdapter] Dynamic Logic: Found ${dynamicKey}, routing to '${payload.targetDb}'`);
-        return { uri: dynamicUri, dbName: `postpipe_${payload.targetDb}` };
+        console.log(`[MongoAdapter] Dynamic Logic: Found ${dynamicKey}, routing to '${targetName}'`);
+        return { uri: dynamicUri, dbName: `postpipe_${targetName}` };
       } else {
-        console.warn(`[MongoAdapter] Warning: targetDb '${payload.targetDb}' requested but env var '${dynamicKey}' not found. Available keys: ${Object.keys(process.env).filter(k => k.startsWith('MONGODB_URI_')).join(', ')}`);
-        console.warn(`[MongoAdapter] Falling back to default routing logic.`);
+        console.warn(`[MongoAdapter] Warning: target '${targetName}' requested but env var "${dynamicKey}" not found.`);
       }
     }
 
+    // 3. Config-based Rules (Only if config exists)
+    let ruleTarget = this.config?.defaultTarget || 'default';
+
     if (payload && this.config?.rules) {
       for (const rule of this.config.rules) {
-        const value = (payload as any)[rule.field]; // e.g. payload.formName
-
+        const value = (payload as any)[rule.field];
         if (value && new RegExp(rule.match).test(String(value))) {
           console.log(`[MongoAdapter] Routing Rule Matched: ${rule.field}="${value}" matches /${rule.match}/ -> ${rule.target}`);
-          target = rule.target;
+          ruleTarget = rule.target;
           break;
         }
       }
     }
 
-    // 3. Resolve Target to Config (Fallback to db-routes.json logic if dynamic failed)
-    const dbConf = this.config?.databases?.[target];
-    if (!dbConf) {
-      // If we are here and didn't find dynamic, revert to default vars
-      return { uri: this.defaultUri, dbName: this.defaultDbName };
+    // 4. Resolve Target from Config (Fallback to db-routes.json)
+    if (this.config) {
+      // If we found a specific target via rules, or use default
+      // Note: If request had targetName but no env var found, we might want to check config for that name too?
+      // Let's check config for the requested targetName first if it exists, otherwise use ruleTarget
+      const effectiveTarget = (targetName && this.config.databases?.[targetName]) ? targetName : ruleTarget;
+
+      const dbConf = this.config.databases?.[effectiveTarget];
+      if (dbConf) {
+        const uri = this.resolveValue(dbConf.uri) || this.defaultUri;
+        const dbName = this.resolveValue(dbConf.dbName) || this.defaultDbName;
+        return { uri, dbName };
+      }
     }
 
-    // 4. Resolve Env Vars
-    const uri = this.resolveValue(dbConf.uri) || this.defaultUri;
-    const dbName = this.resolveValue(dbConf.dbName) || this.defaultDbName;
-
-    return { uri, dbName };
+    // 5. Fallback to Defaults
+    // If no config, no dynamic env var found, return default URI
+    return { uri: this.defaultUri, dbName: this.defaultDbName };
   }
 
   private async getClient(uri: string): Promise<MongoClient> {
